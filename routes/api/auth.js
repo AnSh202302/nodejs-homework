@@ -21,7 +21,5 @@ router.patch(
   upload.single("avatar"),
   ctrl.updateAvatar
 );
-// router.post("/get-reset-token", authenticate, ctrl.getResetToken);
-// router.post("/reset-password", authenticate, ctrl.logout);
 
 module.exports = router;

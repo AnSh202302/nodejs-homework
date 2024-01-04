@@ -1,13 +1,21 @@
+const ElasticEmail = require("@elasticemail/elasticemail-client");
+require("dotenv").config();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const gravatar = require("gravatar");
 const path = require("path");
 const fs = require("fs/promises");
 const { User } = require("../models/user");
-const { HTTPError, ctrlWrapper, sendEmail } = require("../helpers");
+const { HTTPError, ctrlWrapper } = require("../helpers");
 const { SECRET_KEY } = process.env;
 const avatarDir = path.join(__dirname, "../", "public/avatars");
 const { nanoid } = require("nanoid");
+
+const { ELASTIC_API_KEY, EMAIL_FROM } = process.env;
+const defaultClient = ElasticEmail.ApiClient.instance;
+const { apikey } = defaultClient.authentications;
+apikey.apiKey = ELASTIC_API_KEY;
+const api = new ElasticEmail.EmailsApi();
 
 const register = async (req, res) => {
   const { email, password } = req.body;
@@ -24,12 +32,30 @@ const register = async (req, res) => {
     avatarURL,
     verificationToken,
   });
-  const mail = {
-    to: email,
-    subject: "Confirmation of registration on the site",
-    html: `<a href="http://localhost:3300/auth/verify/${verificationToken}" target="_blank">Click to confirm email</a>`,
+
+  const mail = ElasticEmail.EmailMessageData.constructFromObject({
+    Recipients: [new ElasticEmail.EmailRecipient(email)],
+    Content: {
+      Body: [
+        ElasticEmail.BodyPart.constructFromObject({
+          ContentType: "HTML",
+          Content: "<strong>Test email</strong>",
+        }),
+      ],
+      Subject: "Test email",
+      From: EMAIL_FROM,
+    },
+  });
+
+  const callback = function (error, data, response) {
+    if (error) {
+      console.error(error.message);
+    } else {
+      console.log("API called successfully.");
+    }
   };
-  await sendEmail(mail);
+
+  api.emailsPost(mail, callback);
   res.status(201).json({
     user: {
       email: newUser.email,
@@ -62,12 +88,30 @@ const resendVerifyEmail = async (req, res) => {
   if (user.verify) {
     throw HTTPError(400, "Verification has already been passed");
   }
-  const mail = {
-    to: email,
-    subject: "Confirmation of registration on the site",
-    html: `<a href="http://localhost:3300/auth/verify/${user.verificationToken}" target="_blank">Click to confirm email</a>`,
+  const mail = ElasticEmail.EmailMessageData.constructFromObject({
+    Recipients: [new ElasticEmail.EmailRecipient(email)],
+    Content: {
+      Body: [
+        ElasticEmail.BodyPart.constructFromObject({
+          ContentType: "HTML",
+          Content: "<strong>Resend Test email</strong>",
+        }),
+      ],
+      Subject: "Test email",
+      From: EMAIL_FROM,
+    },
+  });
+
+  const callback = function (error, data, response) {
+    if (error) {
+      console.error(error.message);
+    } else {
+      console.log("API called successfully.");
+    }
   };
-  await sendEmail(mail);
+
+  api.emailsPost(mail, callback);
+
   res.json({
     message: "Verification email sent",
   });
